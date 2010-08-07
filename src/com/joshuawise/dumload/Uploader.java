@@ -281,7 +281,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			s.connect();
 			
 			Channel channel = s.openChannel("exec");
-			((ChannelExec)channel).setCommand("scp -t /tmp/lol");
+			((ChannelExec)channel).setCommand("scp -t /tmp/lol.jpg");
 			channel.connect();
 			
 			OutputStream scp_out = channel.getOutputStream();
@@ -292,7 +292,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			/* Okay, BS out of the way.  Now go send the file. */
 			expect_ack(scp_in);
 			
-			scp_out.write(("C0644 " + (Integer.toString(is.available())) + " lol\n").getBytes());
+			scp_out.write(("C0644 " + (Integer.toString(is.available())) + " lol.jpg\n").getBytes());
 			scp_out.flush();
 			
 			expect_ack(scp_in);
@@ -311,16 +311,32 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			
 			is.close();
 			
-			update_notif("Disconnecting...");
+			update_notif("Finishing file transfer...");
 			
 			scp_out.write("\0".getBytes());
 			scp_out.flush();
 			
 			expect_ack(scp_in);
 			
+			channel.disconnect();
+			
+			update_notif("Preparing to resize image...");
+			
+			channel = s.openChannel("exec");
+			((ChannelExec)channel).setCommand("pscale /tmp/lol.jpg");
+			channel.connect();
+			
+			scp_in = channel.getInputStream();
+			
+			update_notif("Resizing image...");
+			while ((len = scp_in.read(buf, 0, buf.length)) > 0)
+				;
+			
+			channel.disconnect();
+			update_notif("Upload complete.");
+			
 			sayNullNotification("Dumload upload complete", "Upload complete", "Dumload has finished uploading your file.");
 
-			channel.disconnect();
 			s.disconnect();
 		} catch (Exception e) {
 			Log.e("Dumload.uploader[thread]", "JSchException: "+(e.toString()));
