@@ -35,6 +35,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 	private int thenotifid;
 	private Notification thenotif;
 	private String headline;
+	private String dest;
 	
 	private InputStream is;
 	
@@ -267,7 +268,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		
 		Log.e("Dumload.Uploader[thread]", "This brought to you from the new thread.");
 		
-		set_up_notif("Dumload upload in progress");
+		set_up_notif("Dumload upload: " + dest);
 		
 		try {
 			say("Uploading "+(Integer.toString(is.available()))+" bytes");
@@ -276,12 +277,16 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		
 			JSch jsch = new JSch();
 			jsch.setKnownHosts(homedir + "/known_hosts");
+			try {
+				jsch.addIdentity(homedir + "/id_dsa");
+			} catch (java.lang.Exception e) {
+			}
 			Session s = jsch.getSession("joshua", "nyus.joshuawise.com", 22);
 			s.setUserInfo(this);
 			s.connect();
 			
 			Channel channel = s.openChannel("exec");
-			((ChannelExec)channel).setCommand("scp -t /tmp/lol.jpg");
+			((ChannelExec)channel).setCommand("scp -t "+dest);
 			channel.connect();
 			
 			OutputStream scp_out = channel.getOutputStream();
@@ -292,7 +297,13 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			/* Okay, BS out of the way.  Now go send the file. */
 			expect_ack(scp_in);
 			
-			scp_out.write(("C0644 " + (Integer.toString(is.available())) + " lol.jpg\n").getBytes());
+			String stfu;
+			if (dest.lastIndexOf("/") > 0)
+				stfu = dest.substring(dest.lastIndexOf("/") + 1);
+			else
+				stfu = dest;
+			
+			scp_out.write(("C0644 " + (Integer.toString(is.available())) + " "+stfu+"\n").getBytes());
 			scp_out.flush();
 			
 			expect_ack(scp_in);
@@ -323,7 +334,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			update_notif("Preparing to resize image...");
 			
 			channel = s.openChannel("exec");
-			((ChannelExec)channel).setCommand("pscale /tmp/lol.jpg");
+			((ChannelExec)channel).setCommand("pscale "+dest);
 			channel.connect();
 			
 			scp_in = channel.getInputStream();
@@ -335,7 +346,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			channel.disconnect();
 			update_notif("Upload complete.");
 			
-			sayNullNotification("Dumload upload complete", "Upload complete", "Dumload has finished uploading your file.");
+			sayNullNotification("Dumload upload complete: " + dest, "Upload complete", "Uploaded: " + dest);
 
 			s.disconnect();
 		} catch (Exception e) {
@@ -356,6 +367,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 	public void onStart(Intent i, int startId)
 	{
 		uri = i.getData();
+		dest = i.getStringExtra("com.joshuawise.dumload.dest");
 		homedir = getApplicationContext().getFilesDir().getAbsolutePath();
 		int shits = 0;
 		
