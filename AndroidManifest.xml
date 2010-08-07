@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="com.joshuawise.dumload"
+      android:versionCode="1"
+      android:versionName="1.0">
+    <application android:icon="@drawable/icon" android:label="Dumload">
+        <activity android:name=".Dumload"
+                  android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            
+
+</intent-filter>
+        <intent-filter><action android:name="android.intent.action.SEND"></action>
+        <category android:name="android.intent.category.DEFAULT" />
+<data android:mimeType="image/jpeg"></data>
+</intent-filter>
+</activity>
+
+<service android:name=".Uploader"><intent-filter><action android:name="com.joshuawise.dumload.Uploader" /></intent-filter></service>
+<activity android:name=".NotifSlave"><intent-filter><action android:name="com.joshuawise.dumload.NotifSlave" /></intent-filter></activity>
+    </application>
+
+
+
+<uses-permission android:name="android.permission.INTERNET"></uses-permission>
+<uses-permission android:name="android.permission.STATUS_BAR"></uses-permission>
+<uses-permission android:name="android.permission.VIBRATE"></uses-permission>
+</manifest> 
