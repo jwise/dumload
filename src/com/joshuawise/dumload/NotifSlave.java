@@ -62,7 +62,12 @@ public class NotifSlave extends Activity {
 		final Messenger m = (Messenger)i.getParcelableExtra("com.joshuawise.dumload.returnmessenger");
 		String reqtype = i.getStringExtra("com.joshuawise.dumload.reqtype");
 		String prompt = i.getStringExtra("com.joshuawise.dumload.prompt");
-		/* If any of these were null, we'll just take the exception. */
+		
+		if (prompt == null || reqtype == null || m == null)	/* i.e., we got called by a dummy notification */
+		{
+			this.finish();
+			return;
+		}
 	
 		if (reqtype.equals("yesno")) {
 			AlertDialog.Builder builder = new AlertDialog.Builder(this);

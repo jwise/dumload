@@ -24,16 +24,41 @@ import android.os.Messenger;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
+import android.widget.RemoteViews;
 
 public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardInteractive {
 	private Uri uri;
 	private String homedir;
 	private Thread me;
 	private static final int HELPME_ID = 1;
+	private RemoteViews remote;
+	private int thenotifid;
+	private Notification thenotif;
+	private String headline;
 	
 	private InputStream is;
 	
 	public Object _theObject;
+
+	private void sayNullNotification(final String scroller, final String headline, final String description)
+	{
+		int bogon = (int)SystemClock.elapsedRealtime();
+		NotificationManager mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		Notification notification = new Notification(R.drawable.icon, scroller, System.currentTimeMillis());
+
+		Intent intent = new Intent(this, NotifSlave.class);
+					
+		intent.setAction("com.joshuawise.dumload.NotifSlave");
+		/* no extras to make the notifslave die */
+		intent.setData((Uri.parse("suckit://"+SystemClock.elapsedRealtime())));
+				
+		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, 0);
+		notification.defaults |= Notification.DEFAULT_VIBRATE;
+		notification.flags |= Notification.FLAG_AUTO_CANCEL;
+		notification.setLatestEventInfo(getApplicationContext(), headline, description, contentIntent);
+				
+		mNotificationManager.notify(bogon, notification);
+	}
 
 	private Object /* pick one type, and fixate on it */ dance(final String type, final String text)	/* for inside the thread */
 	{
@@ -67,7 +92,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 				
 				PendingIntent contentIntent = PendingIntent.getActivity(thisupl, 0, intent, 0);
 				notification.defaults |= Notification.DEFAULT_VIBRATE;
-				notification.flags |= Notification.FLAG_AUTO_CANCEL | Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
+				notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
 				notification.setLatestEventInfo(getApplicationContext(), "I've been had!", "Dumload needs your input.", contentIntent);
 				
 				Log.e("Dumload.Uploader[thread]", "Notifying...");
@@ -148,6 +173,8 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		for (i = 0; i < prompt.length; i++)
 		{
 			responses[i] = (String) dance("password", "[" + dest + "]\n" + prompt[i]);
+			if (responses[i] == null)
+				return null;
 		}
 		return responses;
 	}
@@ -173,6 +200,66 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		}
 	}
 	
+	private void set_up_notif(final String _headline)
+	{
+		NotificationManager mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		thenotif = new Notification(R.drawable.icon, headline, System.currentTimeMillis());
+		thenotifid = (int)SystemClock.elapsedRealtime();
+
+		Intent intent = new Intent(this, NotifSlave.class);
+		
+		headline = _headline;
+					
+		intent.setAction("com.joshuawise.dumload.NotifSlave");
+		/* no extras to make the notifslave die */
+		intent.setData((Uri.parse("suckit://"+SystemClock.elapsedRealtime())));
+				
+		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, 0);
+		thenotif.defaults |= 0;
+		thenotif.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
+		
+		remote = new RemoteViews(getPackageName(), R.layout.textnotif);
+		remote.setImageViewResource(R.id.image, R.drawable.icon);
+		remote.setTextViewText(R.id.headline, headline);
+		remote.setTextViewText(R.id.status, "Beginning upload...");
+		thenotif.contentView = remote;
+		thenotif.contentIntent = contentIntent;
+				
+		mNotificationManager.notify(thenotifid, thenotif);
+	}
+	
+	private void destroy_notif()
+	{
+		NotificationManager mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		mNotificationManager.cancel(thenotifid);
+	}
+	
+	private void update_notif(String text)
+	{
+		NotificationManager mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		
+		remote = new RemoteViews(getPackageName(), R.layout.textnotif);
+		remote.setImageViewResource(R.id.image, R.drawable.icon);
+		remote.setTextViewText(R.id.headline, headline);
+		remote.setTextViewText(R.id.status, text);
+		thenotif.contentView = remote;
+		
+		mNotificationManager.notify(thenotifid, thenotif);
+	}
+	
+	private void update_notif(int n, int total)
+	{
+		NotificationManager mNotificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		
+		remote = new RemoteViews(getPackageName(), R.layout.progressnotif);
+		remote.setImageViewResource(R.id.image, R.drawable.icon);
+		remote.setTextViewText(R.id.headline, headline);
+		remote.setProgressBar(R.id.status, total, n, false);
+		thenotif.contentView = remote;
+		
+		mNotificationManager.notify(thenotifid, thenotif);
+	}
+	
 	@Override
 	public void run()
 	{
@@ -180,8 +267,12 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		
 		Log.e("Dumload.Uploader[thread]", "This brought to you from the new thread.");
 		
+		set_up_notif("Dumload upload in progress");
+		
 		try {
 			say("Uploading "+(Integer.toString(is.available()))+" bytes");
+		
+			update_notif("Connecting...");
 		
 			JSch jsch = new JSch();
 			jsch.setKnownHosts(homedir + "/known_hosts");
@@ -196,6 +287,8 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			OutputStream scp_out = channel.getOutputStream();
 			InputStream scp_in = channel.getInputStream();
 			
+			update_notif("Starting send...");
+			
 			/* Okay, BS out of the way.  Now go send the file. */
 			expect_ack(scp_in);
 			
@@ -204,25 +297,37 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			
 			expect_ack(scp_in);
 			
+			int total, nbytes;
+			total = is.available();
+			nbytes = 0;
 			int len;
 			byte[] buf = new byte[4096];
 			while ((len = is.read(buf, 0, buf.length)) > 0)
+			{
 				scp_out.write(buf, 0, len);
+				nbytes += len;
+				update_notif(nbytes, total);
+			}
 			
 			is.close();
+			
+			update_notif("Disconnecting...");
 			
 			scp_out.write("\0".getBytes());
 			scp_out.flush();
 			
 			expect_ack(scp_in);
 			
-			dance("message", "done");
+			sayNullNotification("Dumload upload complete", "Upload complete", "Dumload has finished uploading your file.");
 
 			channel.disconnect();
 			s.disconnect();
 		} catch (Exception e) {
 			Log.e("Dumload.uploader[thread]", "JSchException: "+(e.toString()));
+			sayNullNotification("Dumload upload failed", "Upload failed", e.toString());
 		}
+		
+		destroy_notif();
 		
 		Log.e("Dumload.uploader[thread]", "And now I'm back to life!");
 	}
