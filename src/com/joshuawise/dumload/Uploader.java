@@ -1,6 +1,7 @@
 package com.joshuawise.dumload;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.jcraft.jsch.*;
 import java.lang.Boolean;
@@ -29,6 +30,8 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 	private String homedir;
 	private Thread me;
 	private static final int HELPME_ID = 1;
+	
+	private InputStream is;
 	
 	public Object _theObject;
 
@@ -149,6 +152,27 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		return responses;
 	}
 	
+	private void expect_ack(InputStream in) throws Exception, java.io.IOException
+	{
+		int b = in.read();
+		
+		if (b == -1)
+		{
+			throw new Exception("unexpected EOF from remote end");
+		}
+		
+		if (b == 1 /* error */ || b == 2 /* fatal error */)
+		{
+			StringBuffer sb = new StringBuffer();
+			int c = 0;
+			
+			while ((c = in.read()) != '\n')
+				sb.append((char)c);
+			
+			throw new Exception("error from remote end: " + sb.toString());
+		}
+	}
+	
 	@Override
 	public void run()
 	{
@@ -157,6 +181,8 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		Log.e("Dumload.Uploader[thread]", "This brought to you from the new thread.");
 		
 		try {
+			say("Uploading "+(Integer.toString(is.available()))+" bytes");
+		
 			JSch jsch = new JSch();
 			jsch.setKnownHosts(homedir + "/known_hosts");
 			Session s = jsch.getSession("joshua", "nyus.joshuawise.com", 22);
@@ -164,17 +190,39 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 			s.connect();
 			
 			Channel channel = s.openChannel("exec");
-			((ChannelExec)channel).setCommand("echo foo > /tmp/lol");
+			((ChannelExec)channel).setCommand("scp -t /tmp/lol");
 			channel.connect();
+			
+			OutputStream scp_out = channel.getOutputStream();
+			InputStream scp_in = channel.getInputStream();
+			
+			/* Okay, BS out of the way.  Now go send the file. */
+			expect_ack(scp_in);
+			
+			scp_out.write(("C0644 " + (Integer.toString(is.available())) + " lol\n").getBytes());
+			scp_out.flush();
+			
+			expect_ack(scp_in);
+			
+			int len;
+			byte[] buf = new byte[4096];
+			while ((len = is.read(buf, 0, buf.length)) > 0)
+				scp_out.write(buf, 0, len);
+			
+			is.close();
+			
+			scp_out.write("\0".getBytes());
+			scp_out.flush();
+			
+			expect_ack(scp_in);
 			
 			dance("message", "done");
 
 			channel.disconnect();
 			s.disconnect();
-		} catch (JSchException e) {
+		} catch (Exception e) {
 			Log.e("Dumload.uploader[thread]", "JSchException: "+(e.toString()));
 		}
-		
 		
 		Log.e("Dumload.uploader[thread]", "And now I'm back to life!");
 	}
@@ -196,12 +244,12 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		Log.e("Dumload.Uploader", "My path is "+homedir);
 		
 		try {
-			InputStream is = getContentResolver().openInputStream(uri);
-			shits = is.available();
+			is = getContentResolver().openInputStream(uri);
 		} catch (Exception e) {
+			say("Failed to open input file.");
+			return;
 		}
 		
-		say("Your shit was "+(Integer.toString(shits))+" bytes long");
 		
 		me = new Thread(this, "Uploader thread");
 		me.start();
