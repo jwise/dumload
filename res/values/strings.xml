@@ -2,4 +2,20 @@
 <resources>
     <string name="hello">Hello World, Dumload!</string>
     <string name="app_name">dumload</string>
+    <string name="prefSshServerTitle">SSH server</string>
+    <string name="preferenceTitle">Preferences</string>
+    <string name="prefConnection">Connection preferences</string>
+    <string name="prefServerTitle">Server</string>
+    <string name="prefServerSummary">The SSH server to connect to</string>
+    <string name="prefUsernameTitle">Username</string>
+    <string name="prefUsernameSummary">The username to use for the ssh connection</string>
+    <string name="prefPortTitle">Port</string>
+    <string name="prefPortSummary">The SSH port on the remote server</string>
+    <string name="prefDefaultPathTitle">Default remote path</string>
+    <string name="prefDefaultPathSummary">Uploads are put in this directory on the remote server by default</string>
+    <string name="prefCrypto">Cryptography</string>
+    <string name="menuGenSshKey">Generate a new SSH key</string>
+    <string name="menuDelSshKey">Remove generated SSH key</string>
+    <string name="msgNoGenKeyFound">No generated SSH key was found.</string>
+    <string name="msgKeyExists">A generated key already exists.</string>
 </resources>
