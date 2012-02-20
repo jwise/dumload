@@ -284,10 +284,14 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 				jsch.addIdentity(homedir + "/id_dsa");
 			} catch (java.lang.Exception e) {
 			}
+			try {
+				jsch.addIdentity(homedir + "/id_dsa_generated");
+			} catch (java.lang.Exception e) {
+			}
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 			String server = prefs.getString("server", "").trim();
 			String userName = prefs.getString("userName", "").trim();
-			Integer port = prefs.getInt("serverPort", 22);
+			Integer port = Integer.valueOf(prefs.getString("port", "22"));
 			Log.d("dbg", userName + "@" + server + ":" + port);
 			Session s = jsch.getSession(userName, server, port);
 			s.setUserInfo(this);
