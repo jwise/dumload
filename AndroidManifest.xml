@@ -12,7 +12,7 @@
     </uses-permission>
 
     <application
-        android:icon="@drawable/icon"
+        android:icon="@drawable/dumload"
         android:label="Dumload" >
         <activity
             android:name=".Dumload"
