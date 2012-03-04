@@ -19,28 +19,32 @@ package com.joshuawise.dumload;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import com.jcraft.jsch.*;
-import java.lang.Boolean;
-
-import android.app.Activity;
-import android.app.Service;
-import android.content.Intent;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.util.Log;
-import android.app.NotificationManager;
-import android.app.Notification;
 import android.os.Handler;
-import android.os.Messenger;
+import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
+import android.util.Log;
 import android.widget.RemoteViews;
+import android.widget.Toast;
+
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.UIKeyboardInteractive;
+import com.jcraft.jsch.UserInfo;
 
 public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardInteractive {
 	private Uri uri;
@@ -277,7 +281,6 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		mNotificationManager.notify(thenotifid, thenotif);
 	}
 	
-	@Override
 	public void run()
 	{
 		Looper.prepare();
@@ -297,7 +300,16 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 				jsch.addIdentity(homedir + "/id_dsa");
 			} catch (java.lang.Exception e) {
 			}
-			Session s = jsch.getSession("joshua", "nyus.joshuawise.com", 22);
+			try {
+				jsch.addIdentity(homedir + "/id_dsa_generated");
+			} catch (java.lang.Exception e) {
+			}
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+			String server = prefs.getString("server", "").trim();
+			String userName = prefs.getString("userName", "").trim();
+			Integer port = Integer.valueOf(prefs.getString("port", "22"));
+			Log.d("dbg", userName + "@" + server + ":" + port);
+			Session s = jsch.getSession(userName, server, port);
 			s.setUserInfo(this);
 			s.connect();
 			
@@ -386,6 +398,7 @@ public class Uploader extends Service implements Runnable, UserInfo, UIKeyboardI
 		dest = i.getStringExtra("com.joshuawise.dumload.dest");
 		homedir = getApplicationContext().getFilesDir().getAbsolutePath();
 		int shits = 0;
+		int giggles = 1;
 		
 		super.onStart(i, startId);
 		

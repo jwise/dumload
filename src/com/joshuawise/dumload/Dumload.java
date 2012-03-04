@@ -16,22 +16,22 @@
 
 package com.joshuawise.dumload;
 
-import java.io.InputStream;
-
 import android.app.Activity;
-import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
+import android.preference.PreferenceManager;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.TextView;
-import android.widget.Button;
-import android.view.View;
-import android.util.Log;
 
 public class Dumload extends Activity {
+	
+	private SharedPreferences prefs;
+	
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -49,12 +49,16 @@ public class Dumload extends Activity {
 		super.onStart();
 		final Dumload thisact = this;
 		
+		prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		
 		Intent i = getIntent(); /* i *am* not an intent! */
 		
 		if (!i.getAction().equals(Intent.ACTION_SEND))
 		{
-			say("Unknown intent for dumload");
-			this.finish();
+//			say("Unknown intent for dumload");
+//			this.finish();
+			Intent pi = new Intent(this, Preferences.class);
+			startActivity(pi);
 			return;
 		}
 		
@@ -84,7 +88,7 @@ public class Dumload extends Activity {
 		
 		
 		((TextView) findViewById(R.id.suckit)).setText("Where to?");
-		((TextView) findViewById(R.id.entry)).setText("/var/www/" + uribase.substring(uribase.lastIndexOf("/") + 1) + ".jpg");
+		((TextView) findViewById(R.id.entry)).setText(prefs.getString("defaultUploadPath", "/var/www/") + uribase.substring(uribase.lastIndexOf("/") + 1) + ".jpg");
 		
 	}
 }

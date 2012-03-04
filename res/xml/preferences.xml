@@ -1,0 +1,23 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/preferenceTitle" >
+
+    <PreferenceCategory android:title="@string/prefConnection" >
+        <EditTextPreference
+            android:key="userName"
+            android:summary="@string/prefUsernameSummary"
+            android:title="@string/prefUsernameTitle" />
+        <EditTextPreference
+            android:key="server"
+            android:summary="@string/prefServerSummary"
+            android:title="@string/prefServerTitle" />
+        <EditTextPreference
+            android:key="port"
+            android:summary="@string/prefPortSummary"
+            android:title="@string/prefPortTitle" />
+        <EditTextPreference
+            android:key="defaultUploadPath"
+            android:summary="@string/prefDefaultPathSummary"
+            android:title="@string/prefDefaultPathTitle" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
